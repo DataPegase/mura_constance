@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Autour de Constance — Visites & Restaurants (budget-friendly)</title>
+  <meta name="description" content="Mainau, Lindau, Konstanz, Pfahlbaumuseum, Meersburg, Zeppelin & Dornier Museum + restaurants abordables avec carte." />
+
+  <!-- Leaflet (OpenStreetMap) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:#0f1b33;
+      --muted:#b7c3dd;
+      --text:#eef3ff;
+      --accent:#7dd3fc;
+      --line:rgba(255,255,255,.10);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+      --max: 1100px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1000px 700px at 20% -10%, rgba(125,211,252,.18), transparent 60%),
+                  radial-gradient(900px 700px at 90% 10%, rgba(167,243,208,.14), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+      line-height:1.55;
+    }
+    .wrap{max-width:var(--max); margin:0 auto; padding:28px 18px 48px}
+    header{
+      padding:26px 18px;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      box-shadow: var(--shadow);
+    }
+    h1{margin:0 0 8px; font-size: clamp(26px, 4vw, 40px);}
+    .subtitle{margin:0; color:var(--muted); max-width:90ch}
+    .pillrow{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px}
+    .pill{
+      padding:7px 10px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .mapcard{
+      margin:18px 0 26px;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .maptop{
+      padding:14px 14px 10px;
+      border-bottom:1px solid var(--line);
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;
+    }
+    .filters{
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+    }
+    .filters label{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:8px 10px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      font-size: 13px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .filters input{accent-color: var(--accent)}
+    .maphint{color:var(--muted); font-size:13px}
+    #map{height: 420px; width:100%}
+
+    nav{
+      margin:0 0 18px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+    nav a{
+      text-decoration:none;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background: rgba(255,255,255,.035);
+      color: var(--text);
+      font-size: 14px;
+    }
+    nav a:hover{border-color: rgba(125,211,252,.45)}
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:18px;
+    }
+    .card{
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .content{padding:18px}
+    .kicker{
+      display:inline-flex; align-items:center; gap:8px;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(125,211,252,.12);
+    }
+    h2{margin:10px 0 8px; font-size: 22px}
+    p{margin:0 0 12px; color: rgba(238,243,255,.92)}
+    .muted{color:var(--muted)}
+    .media{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+      padding:12px;
+      border-bottom:1px solid var(--line);
+      background: rgba(0,0,0,.12);
+    }
+    .media.two{grid-template-columns:1fr}
+    .img{
+      width:100%;
+      height: 260px;
+      border-radius: 14px;
+      object-fit: cover;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+    }
+    .restaurants{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+    .rest{
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      justify-content:space-between;
+    }
+    .rest strong{display:block; margin-bottom:4px}
+    .addr{color:var(--muted); font-size: 14px}
+    .btn{
+      white-space:nowrap;
+      padding:9px 11px;
+      border-radius:12px;
+      border:1px solid rgba(125,211,252,.45);
+      background: rgba(125,211,252,.10);
+      color: var(--text);
+      cursor:pointer;
+      font-size: 13px;
+    }
+    .btn:hover{background: rgba(125,211,252,.16)}
+    footer{
+      margin-top:22px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align:center;
+    }
+    @media (min-width: 860px){
+      .grid{grid-template-columns: 1fr 1fr}
+      .card.span2{grid-column: 1 / -1}
+      .media.two{grid-template-columns: 1fr 1fr}
+      .restaurants{grid-template-columns: 1fr 1fr}
+      .img{height: 280px}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Autour de Constance (Bodensee)</h1>
+      <p class="subtitle">
+        Idées de visites autour de Constance avec restaurants plutôt “€–€€” (conviviaux, pas gastronomiques).
+        La carte ci-dessous affiche tous les restaurants : cliquez sur “Voir sur la carte” pour centrer.
+      </p>
+      <div class="pillrow">
+        <span class="pill">Constance • Lindau • Meersburg • Unteruhldingen • Friedrichshafen</span>
+        <span class="pill">Restaurants : plutôt €–€€</span>
+        <span class="pill">OpenStreetMap + géocodage automatique</span>
+      </div>
+    </header>
+
+    <section class="mapcard" aria-label="Carte des restaurants">
+      <div class="maptop">
+        <div class="filters" id="filters"></div>
+        <div class="maphint" id="status">Chargement de la carte…</div>
+      </div>
+      <div id="map"></div>
+    </section>
+
+    <nav aria-label="Sommaire">
+      <a href="#mainau">Île de Mainau</a>
+      <a href="#lindau">Lindau</a>
+      <a href="#konstanz">Constance</a>
+      <a href="#pfahlbau">Pfahlbaumuseum</a>
+      <a href="#meersburg">Meersburg</a>
+      <a href="#musees">Zeppelin & Dornier Museum</a>
+    </nav>
+
+    <section class="grid">
+      <!-- MAINAU -->
+      <article class="card span2" id="mainau">
+        <div class="media">
+          <img class="img" alt="Château de Mainau" loading="lazy"
+               src="https://commons.wikimedia.org/wiki/Special:FilePath/Schloss%20Mainau.jpg?width=1600">
+        </div>
+        <div class="content">
+          <div class="kicker"><span class="dot"></span>Jardins & nature</div>
+          <h2>Île de Mainau</h2>
+          <p>Île-jardin emblématique : fleurs, arbres remarquables, vues sur le lac. Parcours simple et agréable en famille.</p>
+
+          <h3 class="muted" style="margin:14px 0 6px;">Restaurants (2)</h3>
+          <div class="restaurants">
+            <div class="rest" data-restaurant-id="gasthaus-adler-konstanz">
+              <div>
+                <strong>Gasthaus Adler (Konstanz-Allmannsdorf)</strong>
+                <div class="addr">Mainaustraße 161, 78464 Konstanz</div>
+              </div>
+              <button class="btn" data-focus="gasthaus-adler-konstanz">Voir sur la carte</button>
+            </div>
+            <div class="rest" data-restaurant-id="litzels-konstanz">
+              <div>
+                <strong>Restaurant & Café Litzel's (Konstanz-Litzelstetten)</strong>
+                <div class="addr">Im Loh 14, 78465 Konstanz</div>
+              </div>
+              <button class="btn" data-focus="litzels-konstanz">Voir sur la carte</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- LINDAU -->
+      <article class="card" id="lindau">
+        <div class="media">
+          <img class="img" alt="Port de Lindau" loading="lazy"
+               src="https://commons.wikimedia.org/wiki/Special:FilePath/Hafen%20Lindau%20vom%20Leuchtturm.jpg?width=1600">
+        </div>
+        <div class="content">
+          <div class="kicker"><span class="dot"></span>Vieille ville & port</div>
+          <h2>Visite de Lindau</h2>
+          <p>Vieille ville sur l’île, port (phare + lion), ruelles piétonnes : le spot “carte postale” côté Bavière.</p>
+
+          <h3 class="muted" style="margin:14px 0 6px;">Restaurants (2)</h3>
+          <div class="restaurants">
+            <div class="rest" data-restaurant-id="suenfzen-lindau">
+              <div>
+                <strong>Wirtshaus zum Sünfzen</strong>
+                <div class="addr">Maximilianstraße 1, 88131 Lindau-Insel</div>
+              </div>
+              <button class="btn" data-focus="suenfzen-lindau">Voir sur la carte</button>
+            </div>
+            <div class="rest" data-restaurant-id="da-capo-lindau">
+              <div>
+                <strong>Ristorante / Pizzeria da capo!</strong>
+                <div class="addr">Bürstergasse 1, 88131 Lindau</div>
+              </div>
+              <button class="btn" data-focus="da-capo-lindau">Voir sur la carte</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- KONSTANZ -->
+      <article class="card" id="konstanz">
+        <div class="media two">
+          <img class="img" alt="Port de Constance" loading="lazy"
+               src="https://commons.wikimedia.org/wiki/Special:FilePath/Konstanz%20-%20Hafen.jpg?width=1600">
+          <img class="img" alt="Cathédrale de Constance (Münster)" loading="lazy"
+               src="https://commons.wikimedia.org/wiki/Special:FilePath/M%C3%BCnster%20Konstanz.jpg?width=1600">
+        </div>
+        <div class="content">
+          <div class="kicker"><span class="dot"></span>Centre-ville & musées</div>
+          <h2>Visite de la ville de Constance (Konstanz)</h2>
+          <p>Ville vivante : front de lac, centre historique, shopping, port. Facile à combiner avec un musée ou une balade.</p>
+
+          <h3 class="muted" style="margin:14px 0 6px;">Restaurants (2)</h3>
+          <div class="restaurants">
+            <div class="rest" data-restaurant-id="constanzer-wirtshaus">
+              <div>
+                <strong>Constanzer Wirtshaus</strong>
+                <div class="addr">Spanierstr. 3, 78467 Konstanz</div>
+              </div>
+              <button class="btn" data-focus="constanzer-wirtshaus">Voir sur la carte</button>
+            </div>
+            <div class="rest" data-restaurant-id="burgerheart-konstanz">
+              <div>
+                <strong>Burgerheart Konstanz</strong>
+                <div class="addr">Bodanstraße 23, 78462 Konstanz</div>
+              </div>
+              <button class="btn" data-focus="burgerheart-konstanz">Voir sur la carte</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- PFAHLBAU -->
+      <article class="card" id="pfahlbau">
+        <div class="media">
+          <img class="img" alt="Pfahlbaumuseum Unteruhldingen (maisons sur pilotis)" loading="lazy"
+               src="https://commons.wikimedia.org/wiki/Special:FilePath/Pfahlbaumuseum%20Unteruhldingen%20Bronzezeitdorf%20Unteruhldingen%20SO%202010%2004%2010.jpg?width=1600">
+        </div>
+        <div class="content">
+          <div class="kicker"><span class="dot"></span>Archéologie & plein air</div>
+          <h2>Pfahlbaumuseum (Unteruhldingen)</h2>
+          <p>Musée en plein air très visuel : reconstitutions de maisons sur pilotis et immersion dans la préhistoire.</p>
+
+          <h3 class="muted" style="margin:14px 0 6px;">Restaurants (2)</h3>
+          <div class="restaurants">
+            <div class="rest" data-restaurant-id="uhldinger-fischtheke">
+              <div>
+                <strong>Uhldinger Fischtheke</strong>
+                <div class="addr">Poststraße 8, 88690 Unteruhldingen</div>
+              </div>
+              <button class="btn" data-focus="uhldinger-fischtheke">Voir sur la carte</button>
+            </div>
+            <div class="rest" data-restaurant-id="la-piazza-uhldingen">
+              <div>
+                <strong>Restaurant La Piazza</strong>
+                <div class="addr">Linzgaustr. 32, 88690 Uhldingen-Mühlhofen</div>
+              </div>
+              <button class="btn" data-focus="la-piazza-uhldingen">Voir sur la carte</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- MEERSBURG -->
+      <article class="card" id="meersburg">
+        <div class="media two">
+          <img class="img" alt="Château de Meersburg" loading="lazy"
+               src="https://commons.wikimedia.org/wiki/Special:FilePath/Meersburg%20044.jpg?width=1600">
+          <img class="img" alt="Vue sur Meersburg et le lac" loading="lazy"
+               src="https://commons.wikimedia.org/wiki/Special:FilePath/Bodensee%20Meersburg%20asv2022-10%20img2.jpg?width=1600">
+        </div>
+        <div class="content">
+          <div class="kicker"><span class="dot"></span>Médiéval & vignobles</div>
+          <h2>Meersburg</h2>
+          <p>Ruelles médiévales, points de vue sur le lac, ambiance bourg viticole : parfait pour flâner et dîner simplement.</p>
+
+          <h3 class="muted" style="margin:14px 0 6px;">Restaurants (2)</h3>
+          <div class="restaurants">
+            <div class="rest" data-restaurant-id="zum-becher-meersburg">
+              <div>
+                <strong>Winzerstube zum Becher</strong>
+                <div class="addr">Höllgasse 4, 88709 Meersburg</div>
+              </div>
+              <button class="btn" data-focus="zum-becher-meersburg">Voir sur la carte</button>
+            </div>
+            <div class="rest" data-restaurant-id="winzerstuben-meersburg">
+              <div>
+                <strong>Meersburger Winzerstuben</strong>
+                <div class="addr">Steigstr. 33, 88709 Meersburg</div>
+              </div>
+              <button class="btn" data-focus="winzerstuben-meersburg">Voir sur la carte</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ZEPPELIN & DORNIER -->
+      <article class="card span2" id="musees">
+        <div class="media two">
+          <img class="img" alt="Zeppelin Museum Friedrichshafen" loading="lazy"
+               src="https://commons.wikimedia.org/wiki/Special:FilePath/Zeppelin%20Museum%20Friedrichshafen.jpg?width=1600">
+          <img class="img" alt="Dornier Museum Friedrichshafen" loading="lazy"
+               src="https://commons.wikimedia.org/wiki/Special:FilePath/Dornier-Museum%20Friedrichshafen%202018%20001.jpg?width=1600">
+        </div>
+        <div class="content">
+          <div class="kicker"><span class="dot"></span>Aéronautique</div>
+          <h2>Zeppelin & Dornier Museum (Friedrichshafen)</h2>
+          <p>Deux musées complémentaires sur l’histoire aéronautique. Idéal pour une demi-journée “science & ingénierie”.</p>
+
+          <h3 class="muted" style="margin:14px 0 6px;">Restaurants (2)</h3>
+          <div class="restaurants">
+            <div class="rest" data-restaurant-id="spitalkeller-fn">
+              <div>
+                <strong>Zum Spitalkeller</strong>
+                <div class="addr">Karlstr. 2, 88045 Friedrichshafen</div>
+              </div>
+              <button class="btn" data-focus="spitalkeller-fn">Voir sur la carte</button>
+            </div>
+            <div class="rest" data-restaurant-id="swirtshaus-fn">
+              <div>
+                <strong>s'Wirtshaus am See</strong>
+                <div class="addr">Seestraße 18, 88045 Friedrichshafen</div>
+              </div>
+              <button class="btn" data-focus="swirtshaus-fn">Voir sur la carte</button>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <footer>
+      Carte : OpenStreetMap via Leaflet. Images : Wikimedia Commons (licences selon chaque fichier).
+    </footer>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    // --- Data ---
+    const restaurants = [
+      // Mainau area (Konstanz)
+      { id:"gasthaus-adler-konstanz", place:"Mainau", name:"Gasthaus Adler (Konstanz-Allmannsdorf)", address:"Mainaustraße 161, 78464 Konstanz, Germany" },
+      { id:"litzels-konstanz", place:"Mainau", name:"Restaurant & Café Litzel's (Konstanz-Litzelstetten)", address:"Im Loh 14, 78465 Konstanz, Germany" },
+
+      // Lindau
+      { id:"suenfzen-lindau", place:"Lindau", name:"Wirtshaus zum Sünfzen", address:"Maximilianstraße 1, 88131 Lindau, Germany" },
+      { id:"da-capo-lindau", place:"Lindau", name:"Ristorante / Pizzeria da capo!", address:"Bürstergasse 1, 88131 Lindau, Germany" },
+
+      // Konstanz
+      { id:"constanzer-wirtshaus", place:"Constance", name:"Constanzer Wirtshaus", address:"Spanierstr. 3, 78467 Konstanz, Germany" },
+      { id:"burgerheart-konstanz", place:"Constance", name:"Burgerheart Konstanz", address:"Bodanstraße 23, 78462 Konstanz, Germany" },
+
+      // Pfahlbaumuseum area (Unteruhldingen)
+      { id:"uhldinger-fischtheke", place:"Pfahlbaumuseum", name:"Uhldinger Fischtheke", address:"Poststraße 8, 88690 Uhldingen-Mühlhofen, Germany" },
+      { id:"la-piazza-uhldingen", place:"Pfahlbaumuseum", name:"Restaurant La Piazza", address:"Linzgaustr. 32, 88690 Uhldingen-Mühlhofen, Germany" },
+
+      // Meersburg
+      { id:"zum-becher-meersburg", place:"Meersburg", name:"Winzerstube zum Becher", address:"Höllgasse 4, 88709 Meersburg, Germany" },
+      { id:"winzerstuben-meersburg", place:"Meersburg", name:"Meersburger Winzerstuben", address:"Steigstr. 33, 88709 Meersburg, Germany" },
+
+      // Friedrichshafen (Museums)
+      { id:"spitalkeller-fn", place:"Friedrichshafen", name:"Zum Spitalkeller", address:"Karlstraße 2, 88045 Friedrichshafen, Germany" },
+      { id:"swirtshaus-fn", place:"Friedrichshafen", name:"s'Wirtshaus am See", address:"Seestraße 18, 88045 Friedrichshafen, Germany" },
+    ];
+
+    const places = [...new Set(restaurants.map(r => r.place))];
+
+    // --- Map init ---
+    const map = L.map("map", { scrollWheelZoom: false }).setView([47.6603, 9.1758], 10); // Konstanz
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const statusEl = document.getElementById("status");
+    const filtersEl = document.getElementById("filters");
+
+    const markerById = new Map();
+    const layerByPlace = new Map();
+
+    // Create layer groups per place
+    places.forEach(p => layerByPlace.set(p, L.layerGroup().addTo(map)));
+
+    // --- Filters UI ---
+    function renderFilters() {
+      filtersEl.innerHTML = "";
+      places.forEach(place => {
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="checkbox" checked data-place="${place}"> ${place}`;
+        filtersEl.appendChild(label);
+      });
+      filtersEl.addEventListener("change", (e) => {
+        const cb = e.target;
+        if (cb && cb.matches("input[type=checkbox][data-place]")) {
+          const place = cb.getAttribute("data-place");
+          const layer = layerByPlace.get(place);
+          if (!layer) return;
+          if (cb.checked) layer.addTo(map);
+          else map.removeLayer(layer);
+          fitToVisibleMarkers();
+        }
+      });
+    }
+
+    // --- Geocoding (Nominatim) with localStorage cache ---
+    const CACHE_KEY = "bodensee_restaurant_geocache_v1";
+    const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+
+    async function geocode(address) {
+      if (cache[address]) return cache[address];
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
+      const res = await fetch(url, {
+        headers: { "Accept": "application/json" }
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data || !data.length) return null;
+      const hit = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      cache[address] = hit;
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+      return hit;
+    }
+
+    function fitToVisibleMarkers() {
+      const bounds = L.latLngBounds([]);
+      let count = 0;
+      markerById.forEach((m) => {
+        // Only include markers whose layer group is currently on the map
+        const place = m.options.__place;
+        const layer = layerByPlace.get(place);
+        if (layer && map.hasLayer(layer)) {
+          bounds.extend(m.getLatLng());
+          count++;
+        }
+      });
+      if (count > 0) map.fitBounds(bounds.pad(0.20));
+    }
+
+    function attachFocusButtons() {
+      document.querySelectorAll("button[data-focus]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-focus");
+          const marker = markerById.get(id);
+          if (!marker) return;
+          const place = marker.options.__place;
+          const layer = layerByPlace.get(place);
+          // Ensure layer is visible
+          if (layer && !map.hasLayer(layer)) {
+            layer.addTo(map);
+            const checkbox = filtersEl.querySelector(`input[data-place="${place}"]`);
+            if (checkbox) checkbox.checked = true;
+          }
+          map.setView(marker.getLatLng(), 15, { animate: true });
+          marker.openPopup();
+        });
+      });
+    }
+
+    async function buildMarkers() {
+      statusEl.textContent = "Géocodage des adresses… (premier chargement : quelques secondes)";
+      let ok = 0, fail = 0;
+
+      for (const r of restaurants) {
+        const loc = await geocode(r.address);
+        if (!loc) { fail++; continue; }
+
+        const marker = L.marker([loc.lat, loc.lon], { __place: r.place });
+        marker.bindPopup(`
+          <div style="font-family:system-ui;line-height:1.35">
+            <strong>${escapeHtml(r.name)}</strong><br/>
+            <span>${escapeHtml(r.address)}</span><br/>
+            <a target="_blank" rel="noopener"
+               href="https://www.openstreetmap.org/?mlat=${loc.lat}&mlon=${loc.lon}#map=18/${loc.lat}/${loc.lon}">
+              Ouvrir dans OpenStreetMap
+            </a>
+          </div>
+        `);
+
+        marker.addTo(layerByPlace.get(r.place));
+        markerById.set(r.id, marker);
+        ok++;
+      }
+
+      if (ok > 0) fitToVisibleMarkers();
+      statusEl.textContent = `Carte prête. Restaurants géocodés : ${ok}${fail ? ` — échecs : ${fail}` : ""}.`;
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+      }[c]));
+    }
+
+    // Init
+    renderFilters();
+    attachFocusButtons();
+    buildMarkers();
+  </script>
+</body>
+</html>
